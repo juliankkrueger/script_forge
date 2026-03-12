@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScriptForge — Blueprint Summit</title>
+<link rel="icon" type="image/png" href="/branding_assets/brand_guide/Logos/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=Noto+Sans+Display:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ════════════════════════════════════════════════
+     DESIGN SYSTEM — Blueprint Summit
+     (copied verbatim from Mirror of Influence)
+  ════════════════════════════════════════════════ */
+  :root {
+    --navy: #072330;
+    --teal: #00E9B9;
+    --cyan: #5CE1E6;
+    --text: #FFFFFF;
+    --muted: rgba(255,255,255,0.6);
+    --card: rgba(255,255,255,0.05);
+    --border: rgba(0,233,185,0.3);
+    --border-cyan: rgba(92,225,230,0.3);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; }
+  body {
+    background-color: var(--navy);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='800'%3E%3Cg fill='none' stroke='rgba(0,233,185,0.06)' stroke-width='1'%3E%3Cellipse cx='400' cy='400' rx='80' ry='40'/%3E%3Cellipse cx='400' cy='400' rx='160' ry='80'/%3E%3Cellipse cx='400' cy='400' rx='240' ry='120'/%3E%3Cellipse cx='400' cy='400' rx='320' ry='160'/%3E%3Cellipse cx='400' cy='400' rx='400' ry='200'/%3E%3Cellipse cx='400' cy='400' rx='480' ry='240'/%3E%3Cellipse cx='400' cy='400' rx='560' ry='280'/%3E%3Cellipse cx='400' cy='400' rx='640' ry='320'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 800px 800px;
+    color: var(--text);
+    font-family: 'Noto Sans Display', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Typography ── */
+  .font-heading { font-family: 'Unbounded', sans-serif; }
+  .text-teal { color: var(--teal); }
+  .text-cyan { color: var(--cyan); }
+  .text-muted { color: var(--muted); }
+  .label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+
+  /* ── Layout ── */
+  .view { display: none; min-height: 100vh; }
+  .view.active { display: flex; flex-direction: column; }
+  .center { align-items: center; justify-content: center; }
+  .container { max-width: 900px; margin: 0 auto; padding: 0 24px; width: 100%; }
+
+  /* ── Card ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 32px;
+  }
+  .card-sm { padding: 20px 24px; border-radius: 12px; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 14px 32px; border-radius: 999px; border: none; cursor: pointer;
+    font-family: 'Noto Sans Display', sans-serif; font-weight: 600;
+    font-size: 15px; transition: all 0.2s; text-decoration: none;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--teal), var(--cyan));
+    color: var(--navy);
+  }
+  .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+  .btn-outline {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border); padding: 12px 28px;
+  }
+  .btn-outline:hover { border-color: var(--teal); color: var(--teal); }
+  .btn-danger {
+    background: rgba(255,80,80,0.15); color: #ff6b6b;
+    border: 1px solid rgba(255,80,80,0.3);
+  }
+  .btn-danger:hover { background: rgba(255,80,80,0.25); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* ── Input ── */
+  .input {
+    width: 100%; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 10px; padding: 14px 18px; color: var(--text);
+    font-family: 'Noto Sans Display', sans-serif; font-size: 15px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .input:focus { border-color: var(--teal); }
+  .input::placeholder { color: rgba(255,255,255,0.3); }
+
+  /* ── Error Toast ── */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: rgba(255,80,80,0.9); color: #fff; padding: 12px 24px;
+    border-radius: 8px; font-size: 14px; display: none; z-index: 1000;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+
+  /* ── Overlay Modal ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(7,35,48,0.85);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 50; padding: 24px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: #0a2d3f; border: 1px solid var(--border); border-radius: 20px;
+    padding: 36px; max-width: 520px; width: 100%;
+    max-height: 90vh; overflow-y: auto;
+  }
+
+  /* ── Login Logo ── */
+  .login-logo {
+    max-width: 280px; width: 100%; height: auto;
+    margin-bottom: 32px; display: block;
+    margin-left: auto; margin-right: auto;
+  }
+
+  /* ── Responsive (from Mirror of Influence) ── */
+  @media (max-width: 600px) {
+    .card { padding: 24px 20px; }
+    .btn { padding: 13px 24px; font-size: 14px; }
+  }
+  @media (max-width: 480px) {
+    .card { padding: 1rem; }
+    .login-logo { max-width: 200px; }
+    .modal { max-height: 90vh; overflow-y: auto; padding: 24px 20px; }
+    .container { padding-left: 16px; padding-right: 16px; }
+  }
+
+  /* ════════════════════════════════════════════════
+     SCRIPTFORGE — App-Specific Styles
+  ════════════════════════════════════════════════ */
+
+  /* ── Upload Zone ── */
+  .upload-zone {
+    border: 2px dashed rgba(0,233,185,0.4);
+    border-radius: 16px;
+    padding: 48px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(0,233,185,0.02);
+    position: relative;
+    overflow: hidden;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--teal);
+    background: rgba(0,233,185,0.06);
+  }
+  .upload-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    width: 100%; height: 100%; z-index: 1;
+  }
+  .upload-icon {
+    width: 52px; height: 52px; margin: 0 auto 16px;
+    background: rgba(0,233,185,0.1); border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── Spinner ── */
+  .spinner {
+    width: 52px; height: 52px;
+    border: 3px solid rgba(0,233,185,0.15);
+    border-top-color: var(--teal);
+    border-radius: 50%;
+    animation: spin 0.85s linear infinite;
+    margin: 0 auto 28px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── File Preview ── */
+  .file-preview {
+    display: flex; align-items: center; gap: 14px;
+    background: rgba(0,233,185,0.06);
+    border: 1px solid rgba(0,233,185,0.2);
+    border-radius: 12px; padding: 14px 18px; margin-top: 18px;
+  }
+  .file-preview-thumb {
+    width: 52px; height: 52px; object-fit: cover;
+    border-radius: 8px; flex-shrink: 0;
+  }
+  .file-preview-badge {
+    width: 52px; height: 52px; background: rgba(0,233,185,0.12);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: var(--teal); letter-spacing: 1px;
+    flex-shrink: 0;
+  }
+  .file-preview-info { flex: 1; min-width: 0; }
+  .file-preview-name { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-preview-size { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .file-preview-remove {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 18px; padding: 4px 8px; transition: color 0.15s; flex-shrink: 0;
+  }
+  .file-preview-remove:hover { color: #ff6b6b; }
+
+  /* ── Variant Cards ── */
+  .variant-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--teal);
+    border-radius: 16px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 28px;
+    margin-bottom: 20px;
+  }
+  .variant-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 22px;
+  }
+  .variant-num { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .variant-title { font-family: 'Unbounded', sans-serif; font-size: 15px; color: var(--teal); }
+  .variant-section { margin-bottom: 16px; }
+  .variant-section-label {
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--cyan); margin-bottom: 6px; font-weight: 600;
+  }
+  .variant-section-text {
+    font-size: 14px; line-height: 1.75; color: rgba(255,255,255,0.85);
+    white-space: pre-wrap;
+  }
+  .variant-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 20px; padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    flex-wrap: wrap; gap: 12px;
+  }
+  .variant-checkbox-label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--muted); cursor: pointer;
+    user-select: none;
+  }
+  .variant-checkbox-label input[type="checkbox"] {
+    accent-color: var(--teal); width: 16px; height: 16px; cursor: pointer;
+  }
+
+  /* ── Results Top Bar ── */
+  .results-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  /* ── Success Toast ── */
+  #toast-success {
+    position: fixed; bottom: 70px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,233,185,0.9); color: #072330;
+    padding: 12px 24px; border-radius: 8px;
+    font-size: 14px; font-weight: 600; display: none; z-index: 1000;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+
+  /* ── Top Bar ── */
+  .top-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 32px; border-bottom: 1px solid rgba(0,233,185,0.1);
+  }
+  .top-bar .logo { height: 32px; }
+
+  /* ── ScriptForge Responsive ── */
+  @media (max-width: 600px) {
+    .results-actions { justify-content: stretch; }
+    .results-actions .btn { flex: 1; font-size: 13px; padding: 12px 16px; }
+    .variant-footer { flex-direction: column; align-items: flex-start; }
+    .top-bar { padding: 16px 20px; }
+  }
+  @media (max-width: 480px) {
+    .upload-zone { padding: 32px 20px; }
+    .variant-card { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════ VIEW: LOGIN ════════════════ -->
+<div id="view-login" class="view center" style="padding:24px">
+  <div class="card" style="max-width:420px;width:100%;text-align:center">
+    <img src="/branding_assets/brand_guide/Logos/blueprint_summit_logo_weiss.png" alt="Blueprint Summit"
+      class="login-logo"
+      onerror="this.style.display='none'">
+    <h1 class="font-heading" style="font-size:24px;margin-bottom:8px">ScriptForge</h1>
+    <p class="label text-teal" style="margin-bottom:32px;line-height:1.6">Social Media Script Engine</p>
+    <input type="password" class="input" id="login-password" placeholder="Passwort eingeben" style="margin-bottom:16px" autocomplete="off">
+    <button class="btn btn-primary" id="login-btn" style="width:100%" onclick="doLogin()">Einloggen</button>
+  </div>
+</div>
+
+<!-- ════════════════ VIEW: UPLOAD ════════════════ -->
+<div id="view-upload" class="view" style="flex-direction:column">
+  <div class="top-bar">
+    <img src="/branding_assets/brand_guide/Logos/blueprint_summit_logo_weiss.png" alt="Blueprint Summit" class="logo" onerror="this.style.display='none'">
+    <span class="label text-teal">ScriptForge</span>
+  </div>
+  <div class="container" style="padding-top:48px;padding-bottom:80px;max-width:680px">
+    <p class="label text-teal" style="margin-bottom:10px">Social Media Script Engine</p>
+    <h1 class="font-heading" style="font-size:clamp(24px,5vw,36px);margin-bottom:14px">Deine Skripte.<br>In Sekunden.</h1>
+    <p class="text-muted" style="font-size:15px;line-height:1.75;margin-bottom:40px;max-width:520px">
+      Lade deine Relevanzmatrix hoch — ScriptForge generiert 4 fertige A/B-Test-Skripte für Short-Form Content, die Aufmerksamkeit fesseln und zur Handlung zwingen.
+    </p>
+    <div class="card">
+      <p class="label" style="margin-bottom:18px">Relevanzmatrix hochladen</p>
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" id="file-input" accept=".png,.jpg,.jpeg,.pdf" onchange="handleFileSelect(this.files[0])">
+        <div class="upload-icon">
+          <svg width="24" height="24" fill="none" stroke="#00E9B9" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <p style="font-size:15px;color:rgba(255,255,255,0.7);margin-bottom:6px">Datei ablegen oder klicken</p>
+        <p style="font-size:12px;color:rgba(255,255,255,0.3)">PNG, JPG oder PDF · max. 10 MB · PNG empfohlen</p>
+      </div>
+      <div id="file-preview" style="display:none" class="file-preview">
+        <div id="file-preview-content" style="display:flex;align-items:center;gap:14px;flex:1;min-width:0"></div>
+        <button class="file-preview-remove" onclick="clearFile()">×</button>
+      </div>
+      <div style="margin-top:28px;padding:20px;background:rgba(0,233,185,0.04);border:1px solid rgba(0,233,185,0.12);border-radius:12px">
+        <p class="label" style="margin-bottom:10px;color:var(--teal)">Was ist die Relevanzmatrix?</p>
+        <p style="font-size:13px;color:var(--muted);line-height:1.7">
+          Ein strukturiertes Dokument mit den Abschnitten <strong style="color:rgba(255,255,255,0.7)">Zielgruppe, Persona, Angebot</strong> und <strong style="color:rgba(255,255,255,0.7)">Haltung</strong>. ScriptForge analysiert alle Bereiche und erstellt 4 unterschiedliche Skript-Strategien für maximalen A/B-Test-Wert.
+        </p>
+      </div>
+      <button class="btn btn-primary" id="generate-btn" style="width:100%;margin-top:28px" onclick="startGeneration()" disabled>
+        Skripte generieren
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ VIEW: GENERATING ════════════════ -->
+<div id="view-generating" class="view center" style="padding:24px">
+  <div style="text-align:center;max-width:420px">
+    <div class="spinner"></div>
+    <h2 class="font-heading" style="font-size:22px;margin-bottom:14px">Skripte werden generiert…</h2>
+    <p class="text-muted" style="font-size:14px;line-height:1.75">
+      Claude analysiert deine Relevanzmatrix und entwickelt<br>4 individuelle Script-Strategien für deinen A/B-Test.
+    </p>
+    <p style="font-size:12px;color:rgba(255,255,255,0.2);margin-top:24px">Typischerweise 10–25 Sekunden</p>
+  </div>
+</div>
+
+<!-- ════════════════ VIEW: RESULTS ════════════════ -->
+<div id="view-results" class="view" style="flex-direction:column">
+  <div class="top-bar">
+    <img src="/branding_assets/brand_guide/Logos/blueprint_summit_logo_weiss.png" alt="Blueprint Summit" class="logo" onerror="this.style.display='none'">
+    <span class="label text-teal">ScriptForge — Ergebnisse</span>
+  </div>
+  <div class="container" style="padding-top:40px;padding-bottom:80px;max-width:820px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:32px">
+      <div>
+        <h1 class="font-heading" style="font-size:clamp(20px,4vw,26px);margin-bottom:6px">Deine Skript-Varianten</h1>
+        <p class="text-muted" style="font-size:13px">Wähle Varianten aus und generiere sie neu, oder lade alle herunter.</p>
+      </div>
+      <div class="results-actions">
+        <button class="btn btn-outline" id="regen-selected-btn" onclick="regenerateSelected()" disabled style="font-size:13px;padding:12px 20px">Ausgewählte neu</button>
+        <button class="btn btn-outline" onclick="regenerateAll()" style="font-size:13px;padding:12px 20px">Alle neu</button>
+        <button class="btn btn-primary" onclick="downloadAllAsText()" style="font-size:13px;padding:12px 20px">Als .txt laden</button>
+      </div>
+    </div>
+    <div id="variants-container"></div>
+    <button class="btn btn-outline" style="margin-top:8px" onclick="resetToUpload()">← Neue Analyse starten</button>
+  </div>
+</div>
+
+<!-- ════════════════ TOASTS ════════════════ -->
+<div id="toast"></div>
+<div id="toast-success"></div>
+
+<script>
+// ── State ──
+let currentVariants = []
+let storedImageBase64 = null
+let storedMimeType = null
+
+// ── View System ──
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'))
+  document.getElementById(id).classList.add('active')
+  window.scrollTo(0, 0)
+}
+
+// ── Toast ──
+function showToast(msg) {
+  const t = document.getElementById('toast')
+  t.textContent = msg
+  t.style.display = 'block'
+  setTimeout(() => { t.style.display = 'none' }, 3500)
+}
+function showSuccessToast(msg) {
+  const t = document.getElementById('toast-success')
+  t.textContent = msg
+  t.style.display = 'block'
+  setTimeout(() => { t.style.display = 'none' }, 2500)
+}
+
+// ── Login ──
+async function doLogin() {
+  const pw = document.getElementById('login-password').value.trim()
+  if (!pw) return
+  const btn = document.getElementById('login-btn')
+  btn.disabled = true
+  btn.textContent = '…'
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw })
+    })
+    if (res.ok) {
+      showView('view-upload')
+    } else {
+      showToast('Falsches Passwort')
+      btn.disabled = false
+      btn.textContent = 'Einloggen'
+    }
+  } catch {
+    showToast('Verbindungsfehler')
+    btn.disabled = false
+    btn.textContent = 'Einloggen'
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('login-password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin()
+  })
+
+  // Drag and drop
+  const zone = document.getElementById('upload-zone')
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over') })
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'))
+  zone.addEventListener('drop', e => {
+    e.preventDefault()
+    zone.classList.remove('drag-over')
+    const file = e.dataTransfer?.files[0]
+    if (file) handleFileSelect(file)
+  })
+
+  showView('view-login')
+})
+
+// ── File Handling ──
+async function handleFileSelect(file) {
+  if (!file) return
+  const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf']
+  if (!allowed.includes(file.type)) { showToast('Ungültiger Typ. Bitte PNG, JPG oder PDF.'); return }
+  if (file.size > 10 * 1024 * 1024) { showToast('Datei zu groß. Maximum: 10 MB.'); return }
+
+  try {
+    await compressAndStore(file)
+    showFilePreview(file)
+    document.getElementById('generate-btn').disabled = false
+  } catch (err) {
+    showToast('Fehler beim Verarbeiten der Datei.')
+    console.error(err)
+  }
+}
+
+async function compressAndStore(file) {
+  if (file.type === 'application/pdf') {
+    storedMimeType = 'application/pdf'
+    const buffer = await file.arrayBuffer()
+    const bytes = new Uint8Array(buffer)
+    let binary = ''
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+    storedImageBase64 = btoa(binary)
+    return
+  }
+
+  storedMimeType = (file.type === 'image/jpeg' || file.type === 'image/jpg') ? 'image/jpeg' : 'image/png'
+
+  const bitmap = await createImageBitmap(file)
+  const MAX = 1500
+  const scale = Math.min(1, MAX / Math.max(bitmap.width, bitmap.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bitmap.width * scale)
+  canvas.height = Math.round(bitmap.height * scale)
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+  storedImageBase64 = dataUrl.split(',')[1]
+  storedMimeType = 'image/jpeg'
+}
+
+function showFilePreview(file) {
+  const preview = document.getElementById('file-preview')
+  const content = document.getElementById('file-preview-content')
+  const sizeMB = (file.size / 1024 / 1024).toFixed(2)
+
+  if (file.type.startsWith('image/')) {
+    const url = URL.createObjectURL(file)
+    content.innerHTML = `
+      <img src="${url}" class="file-preview-thumb" alt="Vorschau">
+      <div class="file-preview-info">
+        <div class="file-preview-name">${escapeHtml(file.name)}</div>
+        <div class="file-preview-size">${sizeMB} MB · Bild</div>
+      </div>`
+  } else {
+    content.innerHTML = `
+      <div class="file-preview-badge">PDF</div>
+      <div class="file-preview-info">
+        <div class="file-preview-name">${escapeHtml(file.name)}</div>
+        <div class="file-preview-size">${sizeMB} MB · PDF · PNG empfohlen</div>
+      </div>`
+  }
+  preview.style.display = 'flex'
+  preview.style.alignItems = 'center'
+}
+
+function clearFile() {
+  storedImageBase64 = null
+  storedMimeType = null
+  document.getElementById('file-input').value = ''
+  document.getElementById('file-preview').style.display = 'none'
+  document.getElementById('generate-btn').disabled = true
+}
+
+// ── Generation ──
+async function startGeneration() {
+  if (!storedImageBase64 || !storedMimeType) { showToast('Bitte zuerst eine Datei auswählen.'); return }
+  showView('view-generating')
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 90000)
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: storedImageBase64, mimeType: storedMimeType }),
+      signal: controller.signal
+    })
+    clearTimeout(timeout)
+    const data = await res.json()
+
+    if (!res.ok) { showToast(data.error || 'Generierung fehlgeschlagen'); showView('view-upload'); return }
+
+    currentVariants = data.variants
+    renderVariants()
+    showView('view-results')
+  } catch (err) {
+    clearTimeout(timeout)
+    if (err.name === 'AbortError') showToast('Timeout — bitte erneut versuchen.')
+    else showToast('Verbindungsfehler. Bitte erneut versuchen.')
+    showView('view-upload')
+  }
+}
+
+// ── Render Variants ──
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function renderVariantCard(v) {
+  return `<div class="variant-card" id="variant-card-${v.variantNum}">
+    <div class="variant-header">
+      <div>
+        <div class="variant-num">Variante ${v.variantNum}</div>
+        <div class="variant-title">${escapeHtml(v.title || '')}</div>
+      </div>
+    </div>
+    ${v.behauptung ? `<div class="variant-section">
+      <div class="variant-section-label">Die Behauptung</div>
+      <div class="variant-section-text">${escapeHtml(v.behauptung)}</div>
+    </div>` : ''}
+    ${v.begruendung ? `<div class="variant-section">
+      <div class="variant-section-label">Die Begründung</div>
+      <div class="variant-section-text">${escapeHtml(v.begruendung)}</div>
+    </div>` : ''}
+    ${v.beispiel ? `<div class="variant-section">
+      <div class="variant-section-label">Das Beispiel</div>
+      <div class="variant-section-text">${escapeHtml(v.beispiel)}</div>
+    </div>` : ''}
+    ${v.cta ? `<div class="variant-section">
+      <div class="variant-section-label">Der Call-to-Action</div>
+      <div class="variant-section-text">${escapeHtml(v.cta)}</div>
+    </div>` : ''}
+    ${!v.behauptung && !v.begruendung ? `<div class="variant-section">
+      <div class="variant-section-text">${escapeHtml(v.fullText)}</div>
+    </div>` : ''}
+    <div class="variant-footer">
+      <label class="variant-checkbox-label">
+        <input type="checkbox" class="variant-checkbox" data-variant="${v.variantNum}" onchange="updateRegenButton()">
+        Neu generieren
+      </label>
+      <button class="btn btn-outline" style="padding:10px 20px;font-size:13px" onclick="copyVariant(${v.variantNum})">Kopieren</button>
+    </div>
+  </div>`
+}
+
+function renderVariants() {
+  const container = document.getElementById('variants-container')
+  container.innerHTML = currentVariants.map(renderVariantCard).join('')
+  updateRegenButton()
+}
+
+function updateRegenButton() {
+  const anyChecked = document.querySelectorAll('.variant-checkbox:checked').length > 0
+  document.getElementById('regen-selected-btn').disabled = !anyChecked
+}
+
+// ── Copy ──
+async function copyVariant(variantNum) {
+  const v = currentVariants.find(x => x.variantNum === variantNum)
+  if (!v) return
+  try {
+    await navigator.clipboard.writeText(v.fullText)
+    showSuccessToast('Skript kopiert!')
+  } catch {
+    showToast('Kopieren fehlgeschlagen — bitte manuell markieren.')
+  }
+}
+
+// ── Regenerate ──
+async function regenerateSelected() {
+  const checked = [...document.querySelectorAll('.variant-checkbox:checked')]
+    .map(cb => parseInt(cb.dataset.variant))
+  if (checked.length === 0) return
+  await doRegenerate(checked)
+}
+
+async function regenerateAll() {
+  await doRegenerate([1, 2, 3, 4])
+}
+
+async function doRegenerate(variantNumbers) {
+  if (!storedImageBase64 || !storedMimeType) {
+    showToast('Originaldatei nicht mehr verfügbar. Bitte neu hochladen.')
+    return
+  }
+
+  // Dim affected cards, keep others visible
+  variantNumbers.forEach(n => {
+    const card = document.getElementById(`variant-card-${n}`)
+    if (card) card.style.opacity = '0.4'
+  })
+  document.getElementById('regen-selected-btn').disabled = true
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 90000)
+
+  try {
+    const res = await fetch('/api/regenerate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: storedImageBase64, mimeType: storedMimeType, variantNumbers }),
+      signal: controller.signal
+    })
+    clearTimeout(timeout)
+    const data = await res.json()
+
+    if (!res.ok) { showToast(data.error || 'Regenerierung fehlgeschlagen'); return }
+
+    // Merge new variants and do targeted DOM replacement
+    data.variants.forEach(newV => {
+      const idx = currentVariants.findIndex(v => v.variantNum === newV.variantNum)
+      if (idx !== -1) currentVariants[idx] = newV
+      else currentVariants.push(newV)
+
+      const card = document.getElementById(`variant-card-${newV.variantNum}`)
+      if (card) {
+        const wrapper = document.createElement('div')
+        wrapper.innerHTML = renderVariantCard(newV)
+        card.replaceWith(wrapper.firstElementChild)
+      }
+    })
+
+    updateRegenButton()
+    showSuccessToast('Varianten aktualisiert!')
+  } catch (err) {
+    clearTimeout(timeout)
+    variantNumbers.forEach(n => {
+      const card = document.getElementById(`variant-card-${n}`)
+      if (card) card.style.opacity = '1'
+    })
+    if (err.name === 'AbortError') showToast('Timeout — bitte erneut versuchen.')
+    else showToast('Verbindungsfehler beim Neu-Generieren.')
+    updateRegenButton()
+  }
+}
+
+// ── Download ──
+function downloadAllAsText() {
+  if (!currentVariants.length) return
+  const lines = currentVariants.map(v =>
+    `VARIANTE ${v.variantNum} — ${v.title}\n${'═'.repeat(50)}\n${v.fullText}\n`
+  ).join('\n\n')
+  const content = `ScriptForge — Social Media Skripte\n${'═'.repeat(50)}\nGeneriert: ${new Date().toLocaleDateString('de-DE')}\n\n\n${lines}`
+  const blob = new Blob([content], { type: 'text/plain; charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `ScriptForge_${new Date().toISOString().split('T')[0]}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+// ── Reset ──
+function resetToUpload() {
+  currentVariants = []
+  clearFile()
+  document.getElementById('variants-container').innerHTML = ''
+  showView('view-upload')
+}
+</script>
+</body>
+</html>

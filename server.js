@@ -1,0 +1,264 @@
+import express from 'express'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
+import dotenv from 'dotenv'
+import Anthropic from '@anthropic-ai/sdk'
+
+dotenv.config()
+
+if (!process.env.ANTHROPIC_API_KEY) {
+  console.error('ANTHROPIC_API_KEY fehlt in .env!')
+  process.exit(1)
+}
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+const app = express()
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+app.use(express.json({ limit: '20mb' }))
+app.use(express.static(join(__dirname, 'public')))
+app.use('/branding_assets', express.static(join(__dirname, 'branding_assets')))
+
+// ─── Login ────────────────────────────────────────────────────────────────────
+
+app.post('/api/login', (req, res) => {
+  const { password } = req.body
+  if (password === process.env.APP_PASSWORD) {
+    res.json({ success: true })
+  } else {
+    res.status(401).json({ error: 'Falsches Passwort' })
+  }
+})
+
+// ─── Prompts ──────────────────────────────────────────────────────────────────
+
+const SYSTEM_PROMPT = `Du bist Praxisinhaber und Copywriter für High-Performance Short-Form Content. Dein Ziel ist es, aus dem beigefügten Relevanzmatrix-Dokument Skripte zu erstellen, die Aufmerksamkeit fesseln, Vertrauen aufbauen und eine Handlung erzwingen.`
+
+const FORMAT_INSTRUCTIONS = `
+Antworte NUR mit den Varianten im folgenden Format. Keine Einleitungen, keine Erklärungen davor oder danach.
+
+VARIANTE 1 — Der Status-Angriff
+DIE BEHAUPTUNG:
+[Text]
+DIE BEGRÜNDUNG:
+[Text]
+DAS BEISPIEL:
+[Text]
+DER CALL-TO-ACTION:
+[Text]
+
+VARIANTE 2 — Der Effizienz-Hebel
+DIE BEHAUPTUNG:
+[Text]
+DIE BEGRÜNDUNG:
+[Text]
+DAS BEISPIEL:
+[Text]
+DER CALL-TO-ACTION:
+[Text]
+
+VARIANTE 3 — Der Schmerz-Spiegel
+DIE BEHAUPTUNG:
+[Text]
+DIE BEGRÜNDUNG:
+[Text]
+DAS BEISPIEL:
+[Text]
+DER CALL-TO-ACTION:
+[Text]
+
+VARIANTE 4 — Der Wunsch-Zustand
+DIE BEHAUPTUNG:
+[Text]
+DIE BEGRÜNDUNG:
+[Text]
+DAS BEISPIEL:
+[Text]
+DER CALL-TO-ACTION:
+[Text]`
+
+function buildFullPrompt() {
+  return `Analysiere die Relevanzmatrix im Bild gründlich.
+
+Aufgabe: Erstelle 4 unterschiedliche Skript-Varianten in ultrakurzen, direkten Sätzen basierend auf der Relevanzmatrix. Nutze die Relevanz-Formel und das BBB-Schema. Jede Variante setzt einen anderen psychologischen Schwerpunkt für A/B-Tests.
+
+Skript-Struktur (strenge Vorgabe für jede Variante):
+1. DIE BEHAUPTUNG (Provokation P): Ein Satz. Ein harter Schlag gegen den Status Quo. Der "Hook".
+2. DIE BEGRÜNDUNG (Kontext K & Identifikation I): 2-3 Sätze. Triff den Schmerzpunkt der Zielgruppe präzise. Erkläre das "Warum" hinter der Provokation.
+3. DAS BEISPIEL (Angebot AG & Aufwand A): 2 Sätze. Zeig das Ergebnis einer Case Study oder das klare Versprechen des produktisierten Angebots. Mach den Weg dorthin lächerlich einfach.
+4. DER CALL-TO-ACTION (Entscheidung E): Ein Satz. Nutze Verknappung oder einen direkten Impuls zum Angebot.
+
+Schreibstil-Regeln:
+• Keine Einleitungen. Fang sofort mit der Provokation an.
+• Maximal 13 Wörter pro Satz.
+• Direkte Ansprache. Nutze die Tonalität aus der Relevanzmatrix.
+• Keine KI-Sprache oder Teenager-Slang. Sprich wie ein Experte, der Klartext redet. Dennoch empathisch.
+
+Varianten:
+• Variante 1 (Der Status-Angriff): Fokus auf die Provokation des aktuellen Selbstbildes der Zielgruppe.
+• Variante 2 (Der Effizienz-Hebel): Fokus auf den geringen Aufwand und das schnelle Ergebnis des Angebots.
+• Variante 3 (Der Schmerz-Spiegel): Fokus auf den negativen Kontext, wenn alles so bleibt wie es ist.
+• Variante 4 (Der Wunsch-Zustand): Fokus auf das Gefühl hinter der Erfahrung (positiver Kontext / Pull-Motivation), wenn das Angebot erlebt wurde.
+
+${FORMAT_INSTRUCTIONS}`
+}
+
+const VARIANT_LABELS = {
+  1: 'Der Status-Angriff',
+  2: 'Der Effizienz-Hebel',
+  3: 'Der Schmerz-Spiegel',
+  4: 'Der Wunsch-Zustand'
+}
+
+function buildRegenerationPrompt(variantNumbers) {
+  const requested = variantNumbers.map(n => `Variante ${n} (${VARIANT_LABELS[n]})`).join(', ')
+
+  const formatParts = variantNumbers.map(n => `VARIANTE ${n} — ${VARIANT_LABELS[n]}
+DIE BEHAUPTUNG:
+[Text]
+DIE BEGRÜNDUNG:
+[Text]
+DAS BEISPIEL:
+[Text]
+DER CALL-TO-ACTION:
+[Text]`).join('\n\n')
+
+  return `Analysiere die Relevanzmatrix im Bild.
+
+Erstelle NEUE Versionen NUR für: ${requested}.
+
+Gleiche Schreibstil-Regeln wie zuvor:
+• Maximal 13 Wörter pro Satz.
+• Direkte Ansprache, Tonalität aus der Relevanzmatrix.
+• Keine KI-Sprache. Klarer Expertenstil, empathisch.
+
+Antworte NUR mit diesen Varianten im Format:
+
+${formatParts}`
+}
+
+// ─── Claude API ───────────────────────────────────────────────────────────────
+
+async function callClaude(imageBase64, mimeType, variantNumbers) {
+  const prompt = variantNumbers.length === 4
+    ? buildFullPrompt()
+    : buildRegenerationPrompt(variantNumbers)
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 2500,
+    system: SYSTEM_PROMPT,
+    messages: [{
+      role: 'user',
+      content: [
+        {
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: mimeType,
+            data: imageBase64
+          }
+        },
+        {
+          type: 'text',
+          text: prompt
+        }
+      ]
+    }]
+  })
+
+  return response.content[0].text
+}
+
+// ─── Parsing ──────────────────────────────────────────────────────────────────
+
+function extractSection(text, sectionName) {
+  const escaped = sectionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const nextSections = 'DIE BEHAUPTUNG|DIE BEGRÜNDUNG|DAS BEISPIEL|DER CALL-TO-ACTION|VARIANTE\\s+\\d'
+  const pattern = new RegExp(
+    `${escaped}:?\\s*\\n?([\\s\\S]*?)(?=${nextSections}|$)`,
+    'i'
+  )
+  const match = text.match(pattern)
+  return match ? match[1].trim() : ''
+}
+
+function parseVariants(text) {
+  // Strip markdown bold
+  const clean = text.replace(/\*\*/g, '')
+
+  const variants = []
+  // Match each variant block
+  const variantPattern = /VARIANTE\s+(\d)\s*[—–-]+\s*(.+?)(?=VARIANTE\s+\d|$)/gis
+  let match
+
+  while ((match = variantPattern.exec(clean)) !== null) {
+    const variantNum = parseInt(match[1])
+    const variantBody = match[0]
+    const title = match[2].split('\n')[0].trim()
+
+    const behauptung = extractSection(variantBody, 'DIE BEHAUPTUNG')
+    const begruendung = extractSection(variantBody, 'DIE BEGRÜNDUNG')
+    const beispiel = extractSection(variantBody, 'DAS BEISPIEL')
+    const cta = extractSection(variantBody, 'DER CALL-TO-ACTION')
+
+    const fullText = [
+      `Die Behauptung:\n${behauptung}`,
+      `\nDie Begründung:\n${begruendung}`,
+      `\nDas Beispiel:\n${beispiel}`,
+      `\nDer Call-to-Action:\n${cta}`
+    ].join('\n')
+
+    variants.push({ variantNum, title, behauptung, begruendung, beispiel, cta, fullText })
+  }
+
+  if (variants.length === 0) {
+    // Fallback: return raw text as single variant
+    return [{ variantNum: 1, title: 'Generiertes Skript', behauptung: '', begruendung: '', beispiel: '', cta: '', fullText: clean.trim() }]
+  }
+
+  return variants
+}
+
+// ─── Routes ───────────────────────────────────────────────────────────────────
+
+const ALLOWED_MIMETYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf']
+
+app.post('/api/generate', async (req, res) => {
+  try {
+    const { imageBase64, mimeType } = req.body
+    if (!imageBase64 || !mimeType) return res.status(400).json({ error: 'imageBase64 und mimeType erforderlich' })
+    if (!ALLOWED_MIMETYPES.includes(mimeType)) return res.status(400).json({ error: 'Ungültiger Dateityp' })
+
+    const rawText = await callClaude(imageBase64, mimeType, [1, 2, 3, 4])
+    const variants = parseVariants(rawText)
+    res.json({ variants })
+  } catch (err) {
+    console.error('/api/generate error:', err.message)
+    res.status(500).json({ error: 'Generierung fehlgeschlagen: ' + err.message })
+  }
+})
+
+app.post('/api/regenerate', async (req, res) => {
+  try {
+    const { imageBase64, mimeType, variantNumbers } = req.body
+    if (!imageBase64 || !mimeType || !Array.isArray(variantNumbers) || variantNumbers.length === 0) {
+      return res.status(400).json({ error: 'Ungültige Anfrage' })
+    }
+    if (!ALLOWED_MIMETYPES.includes(mimeType)) return res.status(400).json({ error: 'Ungültiger Dateityp' })
+
+    const rawText = await callClaude(imageBase64, mimeType, variantNumbers)
+    const variants = parseVariants(rawText)
+    res.json({ variants })
+  } catch (err) {
+    console.error('/api/regenerate error:', err.message)
+    res.status(500).json({ error: 'Regenerierung fehlgeschlagen: ' + err.message })
+  }
+})
+
+// ─── Start ────────────────────────────────────────────────────────────────────
+
+const PORT = process.env.PORT || 3002
+app.listen(PORT, () => console.log(`ScriptForge läuft auf Port ${PORT}`))
