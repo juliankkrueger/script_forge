@@ -19,10 +19,10 @@ cd "/Users/julian/Claude Coding/ScriptForge"
 npm install
 node server.js
 ```
-→ http://localhost:3002 · Passwort: `blueprint2026`
+→ http://localhost:3002 · Passwort: siehe .env (APP_PASSWORD)
 
 ## Passwort & Sicherheit
-- APP_PASSWORD=blueprint2026 (in .env, nie hardcoden)
+- APP_PASSWORD=<dein-passwort> (nur in .env, nie ins Repo)
 - ANTHROPIC_API_KEY=... (in .env, nie hardcoden)
 - .env ist in .gitignore
 
