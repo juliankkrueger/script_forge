@@ -378,6 +378,7 @@
 let currentVariants = []
 let storedImageBase64 = null
 let storedMimeType = null
+let sessionToken = null
 
 // ── View System ──
 function showView(id) {
@@ -414,6 +415,8 @@ async function doLogin() {
       body: JSON.stringify({ password: pw })
     })
     if (res.ok) {
+      const data = await res.json()
+      sessionToken = data.token
       showView('view-upload')
     } else {
       showToast('Falsches Passwort')
@@ -533,7 +536,7 @@ async function startGeneration() {
   try {
     const res = await fetch('/api/generate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-session-token': sessionToken },
       body: JSON.stringify({ imageBase64: storedImageBase64, mimeType: storedMimeType }),
       signal: controller.signal
     })
@@ -653,7 +656,7 @@ async function doRegenerate(variantNumbers) {
   try {
     const res = await fetch('/api/regenerate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-session-token': sessionToken },
       body: JSON.stringify({ imageBase64: storedImageBase64, mimeType: storedMimeType, variantNumbers }),
       signal: controller.signal
     })

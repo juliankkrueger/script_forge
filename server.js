@@ -3,6 +3,8 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import dotenv from 'dotenv'
 import Anthropic from '@anthropic-ai/sdk'
+import crypto from 'crypto'
+import rateLimit from 'express-rate-limit'
 
 dotenv.config()
 
@@ -17,6 +19,24 @@ const __dirname = dirname(__filename)
 const app = express()
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+const activeSessions = new Set()
+
+function requireAuth(req, res, next) {
+  const token = req.headers['x-session-token']
+  if (!token || !activeSessions.has(token)) {
+    return res.status(401).json({ error: 'Nicht authentifiziert' })
+  }
+  next()
+}
+
+const generateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Stundenlimit erreicht. Bitte später erneut versuchen.' }
+})
+
 app.use(express.json({ limit: '20mb' }))
 app.use(express.static(join(__dirname, 'public')))
 app.use('/branding_assets', express.static(join(__dirname, 'branding_assets')))
@@ -26,7 +46,9 @@ app.use('/branding_assets', express.static(join(__dirname, 'branding_assets')))
 app.post('/api/login', (req, res) => {
   const { password } = req.body
   if (password === process.env.APP_PASSWORD) {
-    res.json({ success: true })
+    const token = crypto.randomBytes(32).toString('hex')
+    activeSessions.add(token)
+    res.json({ success: true, token })
   } else {
     res.status(401).json({ error: 'Falsches Passwort' })
   }
@@ -226,7 +248,7 @@ function parseVariants(text) {
 
 const ALLOWED_MIMETYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf']
 
-app.post('/api/generate', async (req, res) => {
+app.post('/api/generate', requireAuth, generateLimiter, async (req, res) => {
   try {
     const { imageBase64, mimeType } = req.body
     if (!imageBase64 || !mimeType) return res.status(400).json({ error: 'imageBase64 und mimeType erforderlich' })
@@ -241,7 +263,7 @@ app.post('/api/generate', async (req, res) => {
   }
 })
 
-app.post('/api/regenerate', async (req, res) => {
+app.post('/api/regenerate', requireAuth, generateLimiter, async (req, res) => {
   try {
     const { imageBase64, mimeType, variantNumbers } = req.body
     if (!imageBase64 || !mimeType || !Array.isArray(variantNumbers) || variantNumbers.length === 0) {
