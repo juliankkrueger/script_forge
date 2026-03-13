@@ -56,7 +56,7 @@ app.post('/api/login', (req, res) => {
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `Du bist Praxisinhaber und Copywriter für High-Performance Short-Form Content. Dein Ziel ist es, aus dem beigefügten Relevanzmatrix-Dokument Skripte zu erstellen, die Aufmerksamkeit fesseln, Vertrauen aufbauen und eine Handlung erzwingen.`
+const SYSTEM_PROMPT = `Erstelle mir ein hochkonvertierendes Videoskript für eine Werbeanzeige. Erstelle 4 Varianten für maximale Zielgruppenansprache.`
 
 const FORMAT_INSTRUCTIONS = `
 Antworte NUR mit den Varianten im folgenden Format. Keine Einleitungen, keine Erklärungen davor oder danach.
