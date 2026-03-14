@@ -56,10 +56,9 @@ app.post('/api/login', (req, res) => {
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `Erstelle mir ein hochkonvertierendes Videoskript für eine Werbeanzeige. Erstelle 4 Varianten für maximale Zielgruppenansprache.`
+const SYSTEM_PROMPT = `Erstelle mir auf Basis der Datei ein hochkonvertierendes Videoskript für eine Werbeanzeige. Erstelle vier Varianten für maximale Zielgruppenansprache.`
 
-const FORMAT_INSTRUCTIONS = `
-Antworte NUR mit den Varianten im folgenden Format. Keine Einleitungen, keine Erklärungen davor oder danach.
+const FORMAT_INSTRUCTIONS = `Antworte NUR mit den Varianten im folgenden Format. Keine Einleitungen, keine Erklärungen davor oder danach.
 
 VARIANTE 1 — Der Status-Angriff
 DIE BEHAUPTUNG:
@@ -102,29 +101,7 @@ DER CALL-TO-ACTION:
 [Text]`
 
 function buildFullPrompt() {
-  return `Analysiere die Relevanzmatrix im Bild gründlich.
-
-Aufgabe: Erstelle 4 unterschiedliche Skript-Varianten in ultrakurzen, direkten Sätzen basierend auf der Relevanzmatrix. Nutze die Relevanz-Formel und das BBB-Schema. Jede Variante setzt einen anderen psychologischen Schwerpunkt für A/B-Tests.
-
-Skript-Struktur (strenge Vorgabe für jede Variante):
-1. DIE BEHAUPTUNG (Provokation P): Ein Satz. Ein harter Schlag gegen den Status Quo. Der "Hook".
-2. DIE BEGRÜNDUNG (Kontext K & Identifikation I): 2-3 Sätze. Triff den Schmerzpunkt der Zielgruppe präzise. Erkläre das "Warum" hinter der Provokation.
-3. DAS BEISPIEL (Angebot AG & Aufwand A): 2 Sätze. Zeig das Ergebnis einer Case Study oder das klare Versprechen des produktisierten Angebots. Mach den Weg dorthin lächerlich einfach.
-4. DER CALL-TO-ACTION (Entscheidung E): Ein Satz. Nutze Verknappung oder einen direkten Impuls zum Angebot.
-
-Schreibstil-Regeln:
-• Keine Einleitungen. Fang sofort mit der Provokation an.
-• Maximal 13 Wörter pro Satz.
-• Direkte Ansprache. Nutze die Tonalität aus der Relevanzmatrix.
-• Keine KI-Sprache oder Teenager-Slang. Sprich wie ein Experte, der Klartext redet. Dennoch empathisch.
-
-Varianten:
-• Variante 1 (Der Status-Angriff): Fokus auf die Provokation des aktuellen Selbstbildes der Zielgruppe.
-• Variante 2 (Der Effizienz-Hebel): Fokus auf den geringen Aufwand und das schnelle Ergebnis des Angebots.
-• Variante 3 (Der Schmerz-Spiegel): Fokus auf den negativen Kontext, wenn alles so bleibt wie es ist.
-• Variante 4 (Der Wunsch-Zustand): Fokus auf das Gefühl hinter der Erfahrung (positiver Kontext / Pull-Motivation), wenn das Angebot erlebt wurde.
-
-${FORMAT_INSTRUCTIONS}`
+  return FORMAT_INSTRUCTIONS
 }
 
 const VARIANT_LABELS = {
@@ -147,14 +124,7 @@ DAS BEISPIEL:
 DER CALL-TO-ACTION:
 [Text]`).join('\n\n')
 
-  return `Analysiere die Relevanzmatrix im Bild.
-
-Erstelle NEUE Versionen NUR für: ${requested}.
-
-Gleiche Schreibstil-Regeln wie zuvor:
-• Maximal 13 Wörter pro Satz.
-• Direkte Ansprache, Tonalität aus der Relevanzmatrix.
-• Keine KI-Sprache. Klarer Expertenstil, empathisch.
+  return `Erstelle NEUE Versionen NUR für: ${requested}.
 
 Antworte NUR mit diesen Varianten im Format:
 
