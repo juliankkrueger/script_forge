@@ -31,11 +31,36 @@ function requireAuth(req, res, next) {
 
 const generateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 20,
+  max: 500,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Stundenlimit erreicht. Bitte später erneut versuchen.' }
 })
+
+// API-Queue: max. 5 parallele Claude-Calls um Anthropic Rate Limits zu vermeiden
+const API_CONCURRENCY = 5
+let activeApiCalls = 0
+const apiWaitQueue = []
+
+function acquireApiSlot() {
+  return new Promise(resolve => {
+    if (activeApiCalls < API_CONCURRENCY) {
+      activeApiCalls++
+      resolve()
+    } else {
+      apiWaitQueue.push(resolve)
+    }
+  })
+}
+
+function releaseApiSlot() {
+  if (apiWaitQueue.length > 0) {
+    const next = apiWaitQueue.shift()
+    next()
+  } else {
+    activeApiCalls--
+  }
+}
 
 app.use(express.json({ limit: '20mb' }))
 app.use(express.static(join(__dirname, 'public')))
@@ -45,11 +70,17 @@ app.use('/branding_assets', express.static(join(__dirname, 'branding_assets')))
 
 app.post('/api/login', (req, res) => {
   const { password } = req.body
+  if (!process.env.APP_PASSWORD) {
+    console.error('FEHLER: APP_PASSWORD ist nicht in .env gesetzt!')
+    return res.status(500).json({ error: 'Server-Konfigurationsfehler' })
+  }
   if (password === process.env.APP_PASSWORD) {
     const token = crypto.randomBytes(32).toString('hex')
     activeSessions.add(token)
+    console.log(`Login erfolgreich. Aktive Sessions: ${activeSessions.size}`)
     res.json({ success: true, token })
   } else {
+    console.warn(`Fehlgeschlagener Login-Versuch (${activeSessions.size} aktive Sessions)`)
     res.status(401).json({ error: 'Falsches Passwort' })
   }
 })
@@ -138,39 +169,43 @@ async function callClaude(imageBase64, mimeType, variantNumbers) {
     ? buildFullPrompt()
     : buildRegenerationPrompt(variantNumbers)
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 2500,
-    system: SYSTEM_PROMPT,
-    messages: [{
-      role: 'user',
-      content: [
-        mimeType === 'application/pdf'
-          ? {
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: 'application/pdf',
-                data: imageBase64
+  await acquireApiSlot()
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2500,
+      system: SYSTEM_PROMPT,
+      messages: [{
+        role: 'user',
+        content: [
+          mimeType === 'application/pdf'
+            ? {
+                type: 'document',
+                source: {
+                  type: 'base64',
+                  media_type: 'application/pdf',
+                  data: imageBase64
+                }
               }
-            }
-          : {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: mimeType,
-                data: imageBase64
-              }
-            },
-        {
-          type: 'text',
-          text: prompt
-        }
-      ]
-    }]
-  })
-
-  return response.content[0].text
+            : {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: mimeType,
+                  data: imageBase64
+                }
+              },
+          {
+            type: 'text',
+            text: prompt
+          }
+        ]
+      }]
+    })
+    return response.content[0].text
+  } finally {
+    releaseApiSlot()
+  }
 }
 
 // ─── Parsing ──────────────────────────────────────────────────────────────────
