@@ -17,7 +17,13 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 const app = express()
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+// Schlüssel ohne Workspace-Bindung brauchen die Workspace-ID als Header (sonst 400 bei jeder Anfrage)
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  ...(process.env.ANTHROPIC_WORKSPACE_ID
+    ? { defaultHeaders: { 'anthropic-workspace-id': process.env.ANTHROPIC_WORKSPACE_ID.trim() } }
+    : {})
+})
 
 const activeSessions = new Set()
 
